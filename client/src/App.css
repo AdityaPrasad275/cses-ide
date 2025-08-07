@@ -1,42 +1,92 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+/* General App Layout */
+.App {
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+  margin-bottom: 20px;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* Main Content Layout */
+.main-content {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 20px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+/* Problem & Editor Containers */
+.problem-container,
+.editor-container {
+  flex: 1;
+  background-color: #1e1e1e;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
-.card {
-  padding: 2em;
+.problem-container h2 {
+  margin-top: 0;
+  color: #61dafb;
 }
 
-.read-the-docs {
-  color: #888;
+/* Buttons */
+.button-container {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.button-container button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  background-color: #61dafb;
+  color: #282c34;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.button-container button:hover {
+  background-color: #4fa8d1;
+}
+
+/* Input/Output Areas */
+.io-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.input-area,
+.output-area {
+  display: flex;
+  flex-direction: column;
+}
+
+.io-container h3 {
+  margin: 0 0 5px 0;
+  color: #ccc;
+}
+
+.io-container textarea {
+  width: 100%;
+  min-height: 100px;
+  background-color: #282c34;
+  color: white;
+  border: 1px solid #444;
+  border-radius: 5px;
+  padding: 10px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  box-sizing: border-box; /* Ensures padding is included in width */
 }

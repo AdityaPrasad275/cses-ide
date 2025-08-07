@@ -1,46 +1,39 @@
 import { useState } from 'react';
+import Editor from '@monaco-editor/react';
 import './App.css';
 
 function App() {
-  // useState is a React Hook. It lets us store and manage data in our component.
-  // Here, 'code' will hold the text from the textarea.
-  // 'setCode' is the function we use to update it.
   const [code, setCode] = useState(`#include <iostream>
 
 int main() {
     std::cout << "Hello, World!";
     return 0;
 }`);
+  const [input, setInput] = useState('');
+  const [output, setOutput] = useState('');
 
-  // This function will be called when the "Run" button is clicked.
+  const handleRun = async () => {
+    console.log('Running code:', code);
+    // Mock running the code and setting output
+    setOutput('Hello, World!'); 
+  };
+
   const handleSubmit = async () => {
-    console.log('Sending code to backend:', code);
-
+    console.log('Submitting code to backend:', code);
     try {
-      // 'fetch' is the browser API we use to make network requests.
-      // We're sending a request to our backend's /api/code endpoint.
       const response = await fetch('http://localhost:3001/api/code', {
-        // 'method' specifies the type of request. We use POST because we are sending data.
         method: 'POST',
-        // 'headers' tell the server what kind of data we're sending.
         headers: {
           'Content-Type': 'application/json',
         },
-        // 'body' is the actual data we're sending. We use JSON.stringify
-        // to convert our JavaScript object into a JSON string.
         body: JSON.stringify({ code }),
       });
-
-      // We wait for the server's response and convert it from JSON.
       const result = await response.json();
-
-      // We log the server's response to the browser's developer console.
       console.log('Received response from backend:', result);
-      alert(`Server says: ${result.message}`);
-
+      setOutput(`Server says: ${result.message}`);
     } catch (error) {
-      console.error('Error sending code to backend:', error);
-      alert('Failed to connect to the backend. Is the server running?');
+      console.error('Error submitting code to backend:', error);
+      setOutput('Failed to connect to the backend. Is the server running?');
     }
   };
 
@@ -48,17 +41,47 @@ int main() {
     <div className="App">
       <header className="App-header">
         <h1>CSES IDE</h1>
-        <textarea
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          rows={15}
-          cols={80}
-          style={{ backgroundColor: '#282c34', color: 'white', fontSize: '16px' }}
-        />
-        <button onClick={handleSubmit} style={{ marginTop: '10px' }}>
-          Run Code
-        </button>
       </header>
+      <div className="main-content">
+        <div className="problem-container">
+          <h2>Problem Title</h2>
+          <p>
+            This is where the problem description will go. For now, it's just a placeholder.
+            We'll fetch CSES problems later.
+          </p>
+        </div>
+        <div className="editor-container">
+          <Editor
+            height="70vh"
+            defaultLanguage="cpp"
+            defaultValue={code}
+            onChange={(value) => setCode(value || '')}
+            theme="vs-dark"
+          />
+          <div className="button-container">
+            <button onClick={handleRun}>Run</button>
+            <button onClick={handleSubmit}>Submit</button>
+          </div>
+          <div className="io-container">
+            <div className="input-area">
+              <h3>Input</h3>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Enter input here..."
+              />
+            </div>
+            <div className="output-area">
+              <h3>Output</h3>
+              <textarea
+                value={output}
+                readOnly
+                placeholder="Output will be shown here..."
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
