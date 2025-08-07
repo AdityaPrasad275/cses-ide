@@ -4,6 +4,8 @@ import './App.css';
 
 function App() {
   const [code, setCode] = useState(`#include <iostream>
+#include <vector>
+#include <string>
 
 int main() {
     std::cout << "Hello, World!";
@@ -11,6 +13,7 @@ int main() {
 }`);
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
 
   const handleRun = async () => {
     setOutput('Running...');
@@ -31,32 +34,42 @@ int main() {
   };
 
   const handleSubmit = async () => {
-    // For now, submit does the same as run.
     // This can be changed later to run against official test cases.
     handleRun();
   };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>CSES IDE</h1>
-      </header>
-      <div className="main-content">
+    <div className="ide-layout">
+      <div className="main-panes">
         <div className="problem-container">
-          <h2>Problem Title</h2>
+          <h2>Problem: Missing Number</h2>
           <p>
-            This is where the problem description will go. For now, it's just a placeholder.
-            We'll fetch CSES problems later.
+            You are given all numbers between 1, 2, ..., n except one. Your task is to find the missing number.
           </p>
+          <h3>Input</h3>
+          <p>The first input line contains an integer n.</p>
+          <p>The second line contains n-1 numbers. Each number is distinct and between 1 and n (inclusive).</p>
+          <h3>Output</h3>
+          <p>Print the missing number.</p>
         </div>
         <div className="editor-container">
           <Editor
-            height="70vh"
+            height="100%"
             defaultLanguage="cpp"
             defaultValue={code}
             onChange={(value) => setCode(value || '')}
             theme="vs-dark"
+            options={{ minimap: { enabled: false } }}
           />
+        </div>
+      </div>
+      <div className={`console-drawer ${isConsoleOpen ? 'open' : ''}`}>
+        <div className="console-toolbar">
+          <button onClick={() => setIsConsoleOpen(!isConsoleOpen)}>
+            Console
+          </button>
+        </div>
+        <div className="console-content">
           <div className="button-container">
             <button onClick={handleRun}>Run</button>
             <button onClick={handleSubmit}>Submit</button>
@@ -86,3 +99,4 @@ int main() {
 }
 
 export default App;
+

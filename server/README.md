@@ -54,12 +54,12 @@ The server will be available at `http://localhost:3001`.
 ## ⚙️ How It Works
 
 When a request is sent to the `/api/code` endpoint:
-1.  A unique ID is generated for the request.
+1.  A unique ID is generated for the request to ensure every run is isolated and prevent file conflicts.
 2.  The C++ code is saved to a temporary file (e.g., `temp/<uuid>.cpp`).
 3.  The server calls `g++` to compile the code into an executable (`temp/<uuid>.exe`).
-4.  The executable is run, with the user's input piped to it.
+4.  The executable is run. The user's input is piped to it, and the input stream is immediately closed to prevent the process from hanging if it's waiting for input.
 5.  The program's output (or any error) is captured.
-6.  Both temporary files (`.cpp` and `.exe`) are deleted.
+6.  Both temporary files (`.cpp` and `.exe`) are deleted after the run is complete, regardless of success or failure.
 7.  The captured output is sent back to the client.
 
 ---

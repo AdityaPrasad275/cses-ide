@@ -54,10 +54,13 @@ app.post('/api/code', (req: Request, res: Response) => {
         res.json({ output: runStdout });
       });
 
+      // Pass input to the process, and critically, close the stdin stream
+      // to signal that no more input is coming. This prevents the child
+      // process from hanging indefinitely if it expects input but none is given.
       if (input) {
         child.stdin?.write(input);
-        child.stdin?.end();
       }
+      child.stdin?.end();
     });
   });
 });
