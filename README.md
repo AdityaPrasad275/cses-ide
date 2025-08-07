@@ -37,3 +37,18 @@ cses-ide/
 ├── docs/
 │   └── plan.md     # Development roadmap
 └── README.md
+```
+
+## 📅 Status
+🧪 In development — follow the journey in [plan.md](docs/plan.md)
+
+## 🧠 Learning Goals
+This project is built for learning:
+
+- Full-stack web development
+
+- Secure execution of arbitrary code
+
+- Docker-based sandboxing
+
+- Test automation
