@@ -14,12 +14,14 @@
 ## 🗓️ Project Plan
 
 ### ✅ PHASE 1: Project Skeleton (Day 1 - Fri Eve)
-- [ ] Create repo structure:
+- [x] Create repo structure:
   - `client/` for frontend
   - `server/` for backend
-- [ ] Set up `create-react-app` in `client`
-- [ ] Set up `express` in `server`
-- [ ] Connect frontend and backend with a simple `POST` route
+- [x] Set up `create-react-app` in `client`
+  - *Note: Used **Vite + React + TypeScript** for a more modern setup.*
+- [x] Set up `express` in `server`
+  - *Note: Also added **TypeScript, CORS, and Nodemon** for a robust development environment.*
+- [x] Connect frontend and backend with a simple `POST` route
 
 ---
 
