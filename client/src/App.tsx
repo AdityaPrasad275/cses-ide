@@ -13,28 +13,27 @@ int main() {
   const [output, setOutput] = useState('');
 
   const handleRun = async () => {
-    console.log('Running code:', code);
-    // Mock running the code and setting output
-    setOutput('Hello, World!'); 
-  };
-
-  const handleSubmit = async () => {
-    console.log('Submitting code to backend:', code);
+    setOutput('Running...');
     try {
       const response = await fetch('http://localhost:3001/api/code', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, input }),
       });
       const result = await response.json();
-      console.log('Received response from backend:', result);
-      setOutput(`Server says: ${result.message}`);
+      setOutput(result.output);
     } catch (error) {
-      console.error('Error submitting code to backend:', error);
+      console.error('Error running code:', error);
       setOutput('Failed to connect to the backend. Is the server running?');
     }
+  };
+
+  const handleSubmit = async () => {
+    // For now, submit does the same as run.
+    // This can be changed later to run against official test cases.
+    handleRun();
   };
 
   return (

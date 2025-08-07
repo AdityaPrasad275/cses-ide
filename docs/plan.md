@@ -25,19 +25,27 @@
 
 ---
 
-### ⌨️ PHASE 2: Frontend Editor UI (Day 2 - Sat AM)
-- [ ] Install Monaco Editor (`@monaco-editor/react`)
-- [ ] Build split layout: Left (Problem), Right (Editor)
-- [ ] Add "Run" and "Submit" buttons
-- [ ] Add textareas for input/output display
+### ✅ PHASE 2: Frontend Editor UI (Day 2 - Sat AM)
+- [x] Install Monaco Editor (`@monaco-editor/react`)
+- [x] Build split layout: Left (Problem), Right (Editor)
+- [x] Add "Run" and "Submit" buttons
+- [x] Add textareas for input/output display
 
 ---
 
-### 🔧 PHASE 3: Backend - Code Compile & Run (Sat PM)
-- [ ] Receive C++ code + input from frontend
-- [ ] Save code as `code.cpp`
-- [ ] Use `g++` to compile and execute it
-- [ ] Return stdout/stderr to frontend
+### ✅ PHASE 3: Backend - Code Compile & Run (Sat PM)
+- [x] Receive C++ code + input from frontend
+- [x] Save code as `code.cpp`
+  - *Note: Upgraded to use unique filenames (`uuid`) to prevent race conditions.*
+- [x] Use `g++` to compile and execute it
+- [x] Return stdout/stderr to frontend
+- [x] **Bug Fix:** Solved "Permission Denied" error on Windows.
+
+---
+
+### 🧪 PHASE 3.5: Quality Assurance (Next Session)
+- [ ] Implement a comprehensive testing suite.
+- *Note: A detailed strategy has been created. See [**docs/testing-plan.md**](./testing-plan.md) for the full approach.*
 
 ---
 
