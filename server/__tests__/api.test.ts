@@ -3,116 +3,154 @@ import app from '../index';
 import fs from 'fs';
 import path from 'path';
 
-const tempDir = path.join(__dirname, '../temp');
+// Correctly point to the server/temp directory from inside __tests__
+const tempDir = path.join(__dirname, '..', 'temp');
 
-// Helper function to check for leftover files
-const checkLeftoverFiles = (done: jest.DoneCallback) => {
-  fs.readdir(tempDir, (err, files) => {
-    if (err) {
-      // If tempDir doesn't exist, that's good.
-      if (err.code === 'ENOENT') {
-        return done();
-      }
-      return done(err);
-    }
-    // Filter out .gitkeep or other placeholder files
+// Helper to check for leftover files
+afterEach(async () => {
+  try {
+    const files = await fs.promises.readdir(tempDir);
     const leftoverFiles = files.filter(f => f !== '.gitkeep');
     if (leftoverFiles.length > 0) {
-      return done(new Error(`Test failed: Leftover files in temp directory: ${leftoverFiles.join(', ')}`));
-    }
-    done();
-  });
-};
-
-
-describe('POST /api/code', () => {
-
-  afterEach((done: jest.DoneCallback) => {
-    // Clean up temp directory after each test
-    fs.readdir(tempDir, (err, files) => {
-      if (err) return done(); // Directory likely doesn't exist, which is fine
-      for (const file of files) {
-        // Keep .gitkeep file if it exists
-        if (file !== '.gitkeep') {
-          fs.unlink(path.join(tempDir, file), () => {});
-        }
+      // Cleanup the files before failing the test
+      for (const file of leftoverFiles) {
+        await fs.promises.unlink(path.join(tempDir, file));
       }
-      done();
+      throw new Error(`Test failed: Leftover files in temp directory: ${leftoverFiles.join(', ')}`);
+    }
+  } catch (err: any) {
+    if (err.code === 'ENOENT') {
+      return; // Good, directory doesn't exist or is empty.
+    }
+    throw err;
+  }
+});
+
+describe('CSES IDE API Endpoints', () => {
+
+  describe('GET /api/problems', () => {
+    it('should return a list of problems', async () => {
+      const res = await request(app).get('/api/problems');
+      expect(res.status).toBe(200);
+      expect(res.body).toBeInstanceOf(Array);
+      expect(res.body.length).toBeGreaterThan(0);
+      // Check for the simplified problem structure
+      expect(res.body[0]).toHaveProperty('id');
+      expect(res.body[0]).toHaveProperty('title');
+      expect(res.body[0]).toHaveProperty('difficulty');
+      expect(res.body[0]).not.toHaveProperty('description');
     });
   });
 
-  it('should return 400 if code is not provided', async () => {
-    const res = await request(app)
-      .post('/api/code')
-      .send({ input: '5' });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Code is required.');
+  describe('GET /api/problems/:problemId', () => {
+    it('should return full details for a specific problem', async () => {
+      const res = await request(app).get('/api/problems/weird-algorithm');
+      expect(res.status).toBe(200);
+      expect(res.body.id).toBe('weird-algorithm');
+      expect(res.body).toHaveProperty('description');
+      expect(res.body).toHaveProperty('timeLimit');
+    });
+
+    it('should return 404 for a non-existent problem', async () => {
+      const res = await request(app).get('/api/problems/non-existent-problem');
+      expect(res.status).toBe(404);
+    });
   });
 
-  it('should execute valid C++ code and return the correct output', (done: jest.DoneCallback) => {
-    const code = `
-      #include <iostream>
-      int main() {
-        int a;
-        std::cin >> a;
-        std::cout << "Hello, World! " << a;
-        return 0;
-      }
-    `;
-    const input = '5';
+  describe('POST /api/run', () => {
+    it('should execute code with input and return output', async () => {
+      const code = `#include <iostream>\nint main() { int n; std::cin >> n; std::cout << n * 2; return 0; }`;
+      const res = await request(app)
+        .post('/api/run')
+        .send({ code, input: '123' });
+      expect(res.status).toBe(200);
+      expect(res.body.output).toBe('246');
+    });
 
-    request(app)
-      .post('/api/code')
-      .send({ code, input })
-      .expect(200)
-      .end((err, res) => {
-        if (err) return done(err);
-        expect(res.body.output).toBe('Hello, World! 5');
-        expect(res.body.error).toBeUndefined();
-        checkLeftoverFiles(done);
-      });
-  });
-
-  it('should return a compilation error for invalid C++ code', (done: jest.DoneCallback) => {
-    const code = `
-      #include <iostream>
-      int main() {
-        std::cout << "Hello, World!" // Missing semicolon
-        return 0;
-      }
-    `;
-
-    request(app)
-      .post('/api/code')
-      .send({ code })
-      .expect(200)
-      .end((err, res) => {
-        if (err) return done(err);
+    it('should return a compilation error for invalid code', async () => {
+        const code = `#include <iostream>\nint main() { std::cout << "hello" return 0; }`;
+        const res = await request(app)
+          .post('/api/run')
+          .send({ code, input: '' });
+        expect(res.status).toBe(200);
         expect(res.body.error).toBe(true);
         expect(res.body.output).toContain('error:');
-        checkLeftoverFiles(done);
       });
   });
 
-  it('should handle runtime errors gracefully', (done: jest.DoneCallback) => {
-    const code = `
+  describe('POST /api/submit/:problemId', () => {
+    const problemId = 'weird-algorithm';
+
+    const acceptedCode = `
       #include <iostream>
       int main() {
-        int* p = nullptr;
-        *p = 10; // This will cause a runtime error (segmentation fault)
-        std::cout << "This will not be printed";
+        long long n;
+        std::cin >> n;
+        while (n != 1) {
+          std::cout << n << " ";
+          if (n % 2 == 0) n /= 2;
+          else n = n * 3 + 1;
+        }
+        std::cout << 1;
         return 0;
       }
     `;
 
-    request(app)
-      .post('/api/code')
-      .send({ code })
-      .expect(200)
-      .end((err, res) => {
-        if (err) return done(err);
-        expect(res.body.error).toBe(true);
-        checkLeftoverFiles(done);
+    const wrongAnswerCode = `
+      #include <iostream>
+      int main() { std::cout << "wrong output"; return 0; }
+    `;
+
+    const compileErrorCode = `
+      #include <iostream>
+      int main() { std::cout << "hello" return 0; }
+    `;
+
+    const timeLimitExceededCode = `
+      #include <iostream>
+      int main() { while(1); return 0; }
+    `;
+
+    it('should return { verdict: \'Accepted\' } for a correct solution', async () => {
+      const res = await request(app)
+        .post(`/api/submit/${problemId}`)
+        .send({ code: acceptedCode });
+      expect(res.status).toBe(200);
+      expect(res.body.verdict).toBe('Accepted');
+    }, 15000); // Generous timeout for Jest
+
+    it('should return { verdict: \'Wrong Answer\' } for an incorrect solution', async () => {
+      const res = await request(app)
+        .post(`/api/submit/${problemId}`)
+        .send({ code: wrongAnswerCode });
+      expect(res.status).toBe(200);
+      expect(res.body.verdict).toBe('Wrong Answer');
+      expect(res.body.testCase).toBe(1);
+    }, 15000);
+
+    it('should return { verdict: \'Compilation Error\' } for invalid code', async () => {
+        const res = await request(app)
+          .post(`/api/submit/${problemId}`)
+          .send({ code: compileErrorCode });
+        expect(res.status).toBe(200);
+        expect(res.body.verdict).toBe('Compilation Error');
+        expect(res.body.error).toBeDefined();
+      }, 15000);
+
+    it('should return { verdict: \'Time Limit Exceeded\' } for a slow solution', async () => {
+        const res = await request(app)
+          .post(`/api/submit/${problemId}`)
+          .send({ code: timeLimitExceededCode });
+        expect(res.status).toBe(200);
+        expect(res.body.verdict).toBe('Time Limit Exceeded');
+        expect(res.body.testCase).toBe(1);
+      }, 15000);
+
+      it('should return 404 for a non-existent problem', async () => {
+        const res = await request(app)
+          .post('/api/submit/non-existent-problem')
+          .send({ code: acceptedCode });
+        expect(res.status).toBe(404);
       });
   });
 });

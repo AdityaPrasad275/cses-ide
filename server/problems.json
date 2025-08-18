@@ -1,0 +1,16 @@
+[
+  {
+    "id": "missing-number",
+    "title": "Missing Number",
+    "description": "You are given all numbers between 1, 2, ..., n except one. Your task is to find the missing number.",
+    "difficulty": "Easy",
+    "timeLimit": 1
+  },
+  {
+    "id": "weird-algorithm",
+    "title": "Weird Algorithm",
+    "description": "Consider an algorithm that takes as input a positive integer n. If n is even, the algorithm divides it by two, and if n is odd, the algorithm multiplies it by three and adds one. The algorithm repeats this, until n is one. For example, the sequence for n=3 is 3 -> 10 -> 5 -> 16 -> 8 -> 4 -> 2 -> 1. Your task is to simulate the execution of the algorithm for a given value of n.",
+    "difficulty": "Easy",
+    "timeLimit": 5
+  }
+]
