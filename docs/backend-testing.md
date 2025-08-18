@@ -89,43 +89,49 @@ This change allows us to import `app` in our tests without it trying to start a 
 
 ### b. The Test File: `__tests__/api.test.ts`
 
-All tests for our API are located in `server/__tests__/api.test.ts`. The tests are `async` and use `supertest` to make requests to the Express app.
+All API tests are located in `server/__tests__/api.test.ts`. The suite uses `supertest` to make requests to the Express app and Jest to structure the tests and make assertions.
 
-Here’s a breakdown of what we test:
+Here’s a breakdown of the test coverage for each endpoint:
 
-1.  **Bad Request (400):**
-    -   **What:** We send a request to `/api/code` *without* the required `code` field.
-    -   **How:** `await request(app).post('/api/code').send({ input: '5' })`
-    -   **Expected:** The server should respond with a `400 Bad Request` status and a specific error message: `"Code is required."`.
+#### 1. `GET /api/problems`
+-   **What:** Tests the endpoint that retrieves the list of all problems.
+-   **How:** Makes a `GET` request to `/api/problems`.
+-   **Expected:**
+    -   A `200 OK` status.
+    -   The response body is an array.
+    -   Each object in the array has a simplified structure containing `id`, `title`, and `difficulty`, but not the full `description`.
 
-2.  **Successful Code Execution (Happy Path):**
-    -   **What:** We send valid C++ code that reads from standard input and prints to standard output.
-    -   **How:** `await request(app).post('/api/code').send({ code: '...', input: '5' })`
-    -   **Expected:** The server should respond with a `200 OK` status, and the `output` field in the JSON response should match the program's expected output (`"Hello, World! 5"`).
+#### 2. `GET /api/problems/:problemId`
+-   **What:** Tests fetching the full details for a single, specific problem.
+-   **How:**
+    -   Makes a `GET` request to a valid problem URL (e.g., `/api/problems/weird-algorithm`).
+    -   Makes a `GET` request to a non-existent problem URL.
+-   **Expected:**
+    -   For a valid ID, a `200 OK` status and the full problem object, including `description` and `timeLimit`.
+    -   For an invalid ID, a `404 Not Found` status.
 
-3.  **Compilation Error:**
-    -   **What:** We send C++ code with a syntax error (e.g., a missing semicolon).
-    -   **How:** `await request(app).post('/api/code').send({ code: '...' })`
-    -   **Expected:** The server should respond with a `200 OK` status, but the response body should contain an `error: true` flag and the compilation error message from `g++`.
+#### 3. `POST /api/run`
+-   **What:** Tests the "Run" functionality, which executes code with custom input. This endpoint replaced the legacy `/api/code` endpoint.
+-   **How:**
+    -   Sends valid C++ code and an `input` string.
+    -   Sends C++ code with a syntax error.
+-   **Expected:**
+    -   For valid code, a `200 OK` status and a body containing the correct `output`.
+    -   For invalid code, a `200 OK` status, but with the `error` flag set to `true` and a compilation error message in the `output`.
 
-4.  **Runtime Error:**
-    -   **What:** We send code that compiles successfully but will crash when run (e.g., dereferencing a null pointer).
-    -   **How:** `await request(app).post('/api/code').send({ code: '...' })`
-    -   **Expected:** The server should catch the error and respond with a `200 OK` status and an `error: true` flag.
-
-5.  **Timeout:**
-    -   **What:** We send code that contains an infinite loop (`while(true) {}`).
-    -   **How:** `await request(app).post('/api/code').send({ code: '...' })`
-    -   **Expected:** The server should stop the execution after its internal timeout and respond with a `200 OK` status and an `error: true` flag. The Jest test itself has an increased timeout (`10000ms`) to allow the server-side timeout to complete.
-
-6.  **Missing Input:**
-    -   **What:** We send code that expects standard input, but we provide an empty `input` string.
-    -   **How:** `await request(app).post('/api/code').send({ code: '...', input: '' })`
-    -   **Expected:** The server should execute the code, which completes successfully. In our test case, the program reads an empty string and prints `"Hello, !"`. The test expects a `200 OK` status and verifies this output.
+#### 4. `POST /api/submit/:problemId`
+-   **What:** Tests the "Submit" functionality, which judges code against official test cases. This is the most comprehensive set of tests.
+-   **How:** Submits different types of code solutions to a valid problem ID (`weird-algorithm`).
+-   **Expected Verdicts:**
+    -   **`Accepted`**: For a correct solution that passes all test cases.
+    -   **`Wrong Answer`**: For a solution that produces incorrect output on a test case. The response includes which test case failed.
+    -   **`Compilation Error`**: For code that fails to compile. The response includes the compiler's error message.
+    -   **`Time Limit Exceeded`**: For a solution that runs too long (e.g., an infinite loop). The test has a generous timeout (15000ms) to allow the server's timeout logic to trigger first.
+    -   **`404 Not Found`**: When submitting to a problem ID that does not exist.
 
 ### c. Ensuring Cleanliness: File System Integrity
 
-A critical part of the tests is to ensure the server cleans up after itself. The server creates temporary `.cpp` and `.exe` files for each request, and these must be deleted. The test suite now uses `async` functions from `fs.promises` to handle file system operations.
+A critical part of the tests is to ensure the server cleans up after itself. The server creates temporary `.cpp` and `.exe` files in the `server/temp/` directory for each request, and these must be deleted to prevent side effects between tests.
 
--   **`afterEach` Hook:** Jest's `afterEach` function is now `async`. It runs after every single test in the file and clears the `temp/` directory of any leftover compiled programs or source files, ensuring that tests are isolated. It specifically ignores the `.gitkeep` file.
--   **`checkLeftoverFiles` Helper:** This custom `async` function is called at the end of each test case. It reads the `temp/` directory and fails the test if any temporary files (other than `.gitkeep`) are still present. This verifies that our server's cleanup logic is working correctly for every scenario.
+-   **`afterEach` Hook:** Jest's `afterEach` hook runs after every single test in the file.
+-   **Logic:** The hook reads the contents of the `server/temp/` directory. It ignores the `.gitkeep` file, which is used to ensure the directory is tracked by Git. If any other files are found, the test suite fails, indicating that the server's cleanup logic for that specific test case did not work correctly. This ensures that every code path (success, compilation error, runtime error, etc.) properly cleans up temporary files. Before failing, the hook attempts to delete the leftover files to ensure subsequent tests can run in a clean environment.

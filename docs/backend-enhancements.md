@@ -8,6 +8,8 @@ This document details significant improvements made to the backend execution eng
 
 To build a more robust and secure execution environment, the `/api/code` endpoint was refactored to include timeouts, better error handling, and more modern asynchronous code patterns.
 
+Note: /api/code renamed to /api/run
+
 ### 1. Asynchronous Refactoring
 
 - **Problem:** The original code used nested callbacks for file I/O and process execution, which could lead to "callback hell" and was harder to manage.
