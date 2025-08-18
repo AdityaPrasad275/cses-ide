@@ -5,40 +5,39 @@ import path from 'path';
 
 const tempDir = path.join(__dirname, '../temp');
 
-// Helper function to check for leftover files
-const checkLeftoverFiles = (done: jest.DoneCallback) => {
-  fs.readdir(tempDir, (err, files) => {
-    if (err) {
-      // If tempDir doesn't exist, that's good.
-      if (err.code === 'ENOENT') {
-        return done();
-      }
-      return done(err);
-    }
-    // Filter out .gitkeep or other placeholder files
+// Helper function to check for leftover files, now async
+const checkLeftoverFiles = async () => {
+  try {
+    const files = await fs.promises.readdir(tempDir);
     const leftoverFiles = files.filter(f => f !== '.gitkeep');
     if (leftoverFiles.length > 0) {
-      return done(new Error(`Test failed: Leftover files in temp directory: ${leftoverFiles.join(', ')}`));
+      throw new Error(`Test failed: Leftover files in temp directory: ${leftoverFiles.join(', ')}`);
     }
-    done();
-  });
+  } catch (err: any) {
+    // If tempDir doesn't exist, that's good.
+    if (err.code === 'ENOENT') {
+      return;
+    }
+    throw err;
+  }
 };
-
 
 describe('POST /api/code', () => {
 
-  afterEach((done: jest.DoneCallback) => {
-    // Clean up temp directory after each test
-    fs.readdir(tempDir, (err, files) => {
-      if (err) return done(); // Directory likely doesn't exist, which is fine
+  // afterEach is now async
+  afterEach(async () => {
+    try {
+      const files = await fs.promises.readdir(tempDir);
       for (const file of files) {
-        // Keep .gitkeep file if it exists
         if (file !== '.gitkeep') {
-          fs.unlink(path.join(tempDir, file), () => {});
+          await fs.promises.unlink(path.join(tempDir, file));
         }
       }
-      done();
-    });
+    } catch (err: any) {
+      if (err.code !== 'ENOENT') {
+        throw err;
+      }
+    }
   });
 
   it('should return 400 if code is not provided', async () => {
@@ -49,7 +48,7 @@ describe('POST /api/code', () => {
     expect(res.body.error).toBe('Code is required.');
   });
 
-  it('should execute valid C++ code and return the correct output', (done: jest.DoneCallback) => {
+  it('should execute valid C++ code and return the correct output', async () => {
     const code = `
       #include <iostream>
       int main() {
@@ -61,19 +60,17 @@ describe('POST /api/code', () => {
     `;
     const input = '5';
 
-    request(app)
+    const res = await request(app)
       .post('/api/code')
-      .send({ code, input })
-      .expect(200)
-      .end((err, res) => {
-        if (err) return done(err);
-        expect(res.body.output).toBe('Hello, World! 5');
-        expect(res.body.error).toBeUndefined();
-        checkLeftoverFiles(done);
-      });
+      .send({ code, input });
+      
+    expect(res.status).toBe(200);
+    expect(res.body.output).toBe('Hello, World! 5');
+    expect(res.body.error).toBeUndefined();
+    await checkLeftoverFiles();
   });
 
-  it('should return a compilation error for invalid C++ code', (done: jest.DoneCallback) => {
+  it('should return a compilation error for invalid C++ code', async () => {
     const code = `
       #include <iostream>
       int main() {
@@ -82,19 +79,17 @@ describe('POST /api/code', () => {
       }
     `;
 
-    request(app)
+    const res = await request(app)
       .post('/api/code')
-      .send({ code })
-      .expect(200)
-      .end((err, res) => {
-        if (err) return done(err);
-        expect(res.body.error).toBe(true);
-        expect(res.body.output).toContain('error:');
-        checkLeftoverFiles(done);
-      });
+      .send({ code });
+
+    expect(res.status).toBe(200);
+    expect(res.body.error).toBe(true);
+    expect(res.body.output).toContain('error:');
+    await checkLeftoverFiles();
   });
 
-  it('should handle runtime errors gracefully', (done: jest.DoneCallback) => {
+  it('should handle runtime errors gracefully', async () => {
     const code = `
       #include <iostream>
       int main() {
@@ -105,14 +100,52 @@ describe('POST /api/code', () => {
       }
     `;
 
-    request(app)
+    const res = await request(app)
       .post('/api/code')
-      .send({ code })
-      .expect(200)
-      .end((err, res) => {
-        if (err) return done(err);
-        expect(res.body.error).toBe(true);
-        checkLeftoverFiles(done);
-      });
+      .send({ code });
+
+    expect(res.status).toBe(200);
+    expect(res.body.error).toBe(true);
+    await checkLeftoverFiles();
+  });
+
+  it('should time out if the code runs for too long', async () => {
+    const code = `
+      #include <iostream>
+      int main() {
+        while(true) {}
+        return 0;
+      }
+    `;
+
+    const res = await request(app)
+      .post('/api/code')
+      .send({ code });
+
+    expect(res.status).toBe(200);
+    expect(res.body.error).toBe(true);
+    await checkLeftoverFiles();
+  }, 10000); // Increase Jest's timeout
+
+  it('should handle code that expects input when none is given', async () => {
+    const code = `
+      #include <iostream>
+      #include <string>
+      int main() {
+        std::string name;
+        std::cin >> name;
+        std::cout << "Hello, " << name << "!";
+        return 0;
+      }
+    `;
+
+    const res = await request(app)
+      .post('/api/code')
+      .send({ code, input: '' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.output).toBe('Hello, !');
+    expect(res.body.error).toBeUndefined();
+    await checkLeftoverFiles();
   });
 });

@@ -89,31 +89,43 @@ This change allows us to import `app` in our tests without it trying to start a 
 
 ### b. The Test File: `__tests__/api.test.ts`
 
-All tests for our API are located in `server/__tests__/api.test.ts`. Here’s a breakdown of what we test:
+All tests for our API are located in `server/__tests__/api.test.ts`. The tests are `async` and use `supertest` to make requests to the Express app.
+
+Here’s a breakdown of what we test:
 
 1.  **Bad Request (400):**
     -   **What:** We send a request to `/api/code` *without* the required `code` field.
-    -   **How:** `request(app).post('/api/code').send({ input: '5' })`
-    -   **Expected:** The server should respond with a `400 Bad Request` status and a specific error message.
+    -   **How:** `await request(app).post('/api/code').send({ input: '5' })`
+    -   **Expected:** The server should respond with a `400 Bad Request` status and a specific error message: `"Code is required."`.
 
 2.  **Successful Code Execution (Happy Path):**
     -   **What:** We send valid C++ code that reads from standard input and prints to standard output.
-    -   **How:** `request(app).post('/api/code').send({ code: '...', input: '5' })`
+    -   **How:** `await request(app).post('/api/code').send({ code: '...', input: '5' })`
     -   **Expected:** The server should respond with a `200 OK` status, and the `output` field in the JSON response should match the program's expected output (`"Hello, World! 5"`).
 
 3.  **Compilation Error:**
     -   **What:** We send C++ code with a syntax error (e.g., a missing semicolon).
-    -   **How:** `request(app).post('/api/code').send({ code: '...' })`
+    -   **How:** `await request(app).post('/api/code').send({ code: '...' })`
     -   **Expected:** The server should respond with a `200 OK` status, but the response body should contain an `error: true` flag and the compilation error message from `g++`.
 
 4.  **Runtime Error:**
     -   **What:** We send code that compiles successfully but will crash when run (e.g., dereferencing a null pointer).
-    -   **How:** `request(app).post('/api/code').send({ code: '...' })`
+    -   **How:** `await request(app).post('/api/code').send({ code: '...' })`
     -   **Expected:** The server should catch the error and respond with a `200 OK` status and an `error: true` flag.
+
+5.  **Timeout:**
+    -   **What:** We send code that contains an infinite loop (`while(true) {}`).
+    -   **How:** `await request(app).post('/api/code').send({ code: '...' })`
+    -   **Expected:** The server should stop the execution after its internal timeout and respond with a `200 OK` status and an `error: true` flag. The Jest test itself has an increased timeout (`10000ms`) to allow the server-side timeout to complete.
+
+6.  **Missing Input:**
+    -   **What:** We send code that expects standard input, but we provide an empty `input` string.
+    -   **How:** `await request(app).post('/api/code').send({ code: '...', input: '' })`
+    -   **Expected:** The server should execute the code, which completes successfully. In our test case, the program reads an empty string and prints `"Hello, !"`. The test expects a `200 OK` status and verifies this output.
 
 ### c. Ensuring Cleanliness: File System Integrity
 
-A critical part of the tests is to ensure the server cleans up after itself. The server creates temporary `.cpp` and `.exe` files for each request, and these must be deleted.
+A critical part of the tests is to ensure the server cleans up after itself. The server creates temporary `.cpp` and `.exe` files for each request, and these must be deleted. The test suite now uses `async` functions from `fs.promises` to handle file system operations.
 
--   **`afterEach` Hook:** Jest's `afterEach` function runs after every single test in the file. We use it to manually clear the `temp/` directory, ensuring that tests are isolated from each other.
--   **`checkLeftoverFiles` Helper:** This custom function is called at the end of each test case. It reads the `temp/` directory and fails the test if any temporary files from the request are still present. This verifies that our server's cleanup logic is working correctly for every scenario.
+-   **`afterEach` Hook:** Jest's `afterEach` function is now `async`. It runs after every single test in the file and clears the `temp/` directory of any leftover compiled programs or source files, ensuring that tests are isolated. It specifically ignores the `.gitkeep` file.
+-   **`checkLeftoverFiles` Helper:** This custom `async` function is called at the end of each test case. It reads the `temp/` directory and fails the test if any temporary files (other than `.gitkeep`) are still present. This verifies that our server's cleanup logic is working correctly for every scenario.
